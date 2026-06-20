@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/users")
 public class UserController {
 
-    @GetMapping
+    @GetMapping("/")
     public String helloUser() {
         return "Hi From Spring boot backend... Manoj...";
     }
