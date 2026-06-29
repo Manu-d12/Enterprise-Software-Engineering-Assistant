@@ -23,4 +23,14 @@ public class UserServiceImpl implements UserService {
         User savedUser = this.userRepo.save(user);
         return this.modelMapper.map(savedUser, UserRegisterDTO.class);
     }
+
+    @Override
+    public User findUserByUsername(String username) {
+        return userRepo.findByEmail(username);
+    }
+
+    @Override
+    public User findById(String id) {
+        return userRepo.findById(Long.parseLong(id)).get();
+    }
 }

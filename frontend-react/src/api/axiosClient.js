@@ -2,14 +2,15 @@ import axios from "axios";
 
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8080/ai-assistant",
+  baseURL: import.meta.env.VITE_AI_ASSISTANT_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
+  const token =
+    localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
