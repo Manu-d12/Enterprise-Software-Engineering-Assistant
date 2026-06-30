@@ -19,10 +19,12 @@ This project is designed for a **3 YOE Java Developer** resume with strong focus
 
 - Java
 - Spring Boot
+- Spring AI
 - REST APIs
 - Spring Security
-- React
-- Python FastAPI
+- React JS
+- Vite
+- JavaScript
 - GenAI
 - RAG
 - Vector Database
@@ -37,20 +39,17 @@ This project is designed for a **3 YOE Java Developer** resume with strong focus
 
 One-line description:
 
-> An AI-powered developer assistant built using Java Spring Boot, React, Python FastAPI, LangChain, and RAG to automate requirement analysis, Spring Boot code generation, code review, and project knowledge search.
+> An AI-powered developer assistant built using Java 21, Spring Boot 3, Spring AI, React JS, Vite, JavaScript, and RAG to automate requirement analysis, Spring Boot code generation, code review, and project knowledge search.
 
 ---
 
 # High-Level Architecture
 
 ```text
-React Frontend
+React JS + Vite Frontend
       |
       v
-Spring Boot Backend
-      |
-      v
-Python FastAPI GenAI Service
+Spring Boot Backend with Spring AI
       |
       v
 LLM API + Vector Database
@@ -65,8 +64,9 @@ PostgreSQL / ChromaDB
 
 ## Frontend
 
-- React
-- TypeScript
+- React JS
+- Vite
+- JavaScript
 - Axios
 - React Router
 - Material UI or Tailwind CSS
@@ -75,23 +75,23 @@ PostgreSQL / ChromaDB
 
 - Java 21
 - Spring Boot 3
+- Spring AI
 - Spring Web
 - Spring Security
 - JWT Authentication
 - Spring Data JPA
 - PostgreSQL
-- OpenFeign or RestTemplate/WebClient
+- LLM integration through Spring AI ChatClient
+- Embeddings and vector search through Spring AI
 - Maven
 
-## Python GenAI Service
+## AI and RAG
 
-- Python
-- FastAPI
-- LangChain
-- LangGraph later if time allows
 - OpenAI / Gemini API
 - ChromaDB
-- Pydantic
+- Spring AI VectorStore integration
+- Prompt templates
+- Structured JSON responses
 
 ## DevOps
 
@@ -264,11 +264,10 @@ Week 1
 
 ## Goal
 
-Set up all three applications:
+Set up both applications:
 
-- React frontend
-- Spring Boot backend
-- Python FastAPI AI service
+- React JS + Vite frontend
+- Spring Boot backend with Spring AI
 
 ## Functionality to Build
 
@@ -282,6 +281,8 @@ Create backend project with:
 - Spring Web
 - Spring Security
 - Spring Data JPA
+- Spring AI
+- Spring AI OpenAI or Gemini starter
 - PostgreSQL driver
 - Lombok
 - Validation
@@ -289,7 +290,7 @@ Create backend project with:
 Initial packages:
 
 ```text
-com.aiassistant.backend
+backend-java/src/main/java/com/aiassistant/backend
 ├── config
 ├── controller
 ├── dto
@@ -300,7 +301,7 @@ com.aiassistant.backend
 └── exception
 ```
 
-### React
+### React JS + Vite
 
 Create frontend app with:
 
@@ -310,25 +311,14 @@ Create frontend app with:
 - Routing setup
 - Axios setup
 
-### Python FastAPI
-
-Create AI service with:
-
-- FastAPI app
-- Health check API
-- Basic folder structure
-
-Python structure:
+Recommended project path:
 
 ```text
-ai-service
-├── app
-│   ├── main.py
-│   ├── routes
-│   ├── services
-│   ├── prompts
-│   └── models
-└── requirements.txt
+frontend-react
+├── src
+├── package.json
+├── vite.config.js
+└── README.md
 ```
 
 ## APIs to Build
@@ -339,19 +329,12 @@ ai-service
 GET /api/health
 ```
 
-### Python
-
-```http
-GET /health
-```
-
 ## Deliverables
 
 At end of week 1:
 
-- React app running
+- React JS + Vite app running
 - Spring Boot app running
-- Python FastAPI app running
 - GitHub repo created
 - Basic README added
 
@@ -359,9 +342,9 @@ At end of week 1:
 
 Shows:
 
-- Multi-service project setup
+- Full-stack project setup
 - Java backend ownership
-- AI microservice architecture
+- Spring AI architecture
 
 ---
 
@@ -454,11 +437,11 @@ Shows:
 - JWT
 - REST API design
 - PostgreSQL
-- React integration
+- React JS + Vite integration
 
 ---
 
-# Phase 3 - Spring Boot to Python AI Service Integration
+# Phase 3 - Spring AI Integration
 
 ## Duration
 
@@ -466,14 +449,14 @@ Week 3
 
 ## Goal
 
-Make Spring Boot communicate with Python FastAPI service.
+Make Spring Boot communicate directly with the LLM through Spring AI.
 
 ## Functionality to Build
 
 Create a basic GenAI flow:
 
 ```text
-React -> Spring Boot -> Python FastAPI -> LLM -> Spring Boot -> React
+React JS + Vite -> Spring Boot -> Spring AI -> LLM -> Spring Boot -> React
 ```
 
 ## Feature
@@ -510,49 +493,23 @@ Response:
 }
 ```
 
-## Python APIs
-
-```http
-POST /api/generate
-```
-
-Request:
-
-```json
-{
-  "prompt": "Explain REST API"
-}
-```
-
-Response:
-
-```json
-{
-  "response": "A REST API is..."
-}
-```
-
 ## Important Implementation
 
-Spring Boot should call Python using:
-
-- WebClient, or
-- OpenFeign
+Spring Boot should use Spring AI:
 
 Recommended:
 
 ```text
-Use WebClient for clean async HTTP calls.
+Use ChatClient for clean LLM calls from the service layer.
 ```
 
 ## Deliverables
 
 At end of week 3:
 
-- React can send prompt
+- React JS + Vite can send prompt
 - Spring Boot receives prompt
-- Spring Boot calls Python
-- Python calls LLM
+- Spring AI calls the LLM
 - AI response displayed in React
 
 ## Resume Value
@@ -560,8 +517,8 @@ At end of week 3:
 Shows:
 
 - Java backend as main API layer
-- Python AI service integration
-- Microservice communication
+- Spring AI integration
+- LLM orchestration inside Spring Boot
 - GenAI API integration
 
 ---
@@ -587,10 +544,10 @@ User can upload project documents:
 System will:
 
 1. Store uploaded file metadata in PostgreSQL
-2. Send file text to Python service
+2. Extract text in Spring Boot
 3. Split text into chunks
-4. Generate embeddings
-5. Store embeddings in ChromaDB
+4. Generate embeddings using Spring AI
+5. Store embeddings in ChromaDB through Spring AI VectorStore
 
 ## Database Table
 
@@ -613,38 +570,13 @@ POST /api/projects/{projectId}/documents/upload
 GET /api/projects/{projectId}/documents
 ```
 
-## Python APIs
-
-```http
-POST /api/documents/ingest
-```
-
-Request:
-
-```json
-{
-  "projectId": 1,
-  "fileName": "coding-standards.txt",
-  "content": "All APIs must use ApiResponse..."
-}
-```
-
-Response:
-
-```json
-{
-  "status": "SUCCESS",
-  "chunksCreated": 12
-}
-```
-
 ## RAG Processing
 
-Python should:
+Spring Boot should:
 
 - Read text
 - Split into chunks
-- Generate embeddings
+- Generate embeddings with Spring AI
 - Store in ChromaDB with metadata:
 
 ```json
@@ -668,7 +600,7 @@ In project details page:
 At end of week 4:
 
 - User can upload document
-- Document text sent to Python
+- Document text processed by Spring Boot
 - Embeddings stored in ChromaDB
 - Uploaded files listed in project
 
@@ -706,7 +638,7 @@ System should:
 
 1. Search ChromaDB for relevant chunks using projectId
 2. Add chunks to LLM prompt
-3. Generate answer
+3. Generate answer using Spring AI ChatClient
 4. Return answer with source file names
 
 ## Spring Boot API
@@ -732,12 +664,6 @@ Response:
 }
 ```
 
-## Python API
-
-```http
-POST /api/rag/chat
-```
-
 ## Feature 2: Requirement Analyzer
 
 User enters:
@@ -761,12 +687,6 @@ AI returns:
 
 ```http
 POST /api/projects/{projectId}/requirements/analyze
-```
-
-## Python API
-
-```http
-POST /api/requirements/analyze
 ```
 
 ## Store Output
@@ -834,11 +754,11 @@ Build the most important resume feature: AI code generator.
 ```text
 User enters module requirement
         |
-React sends request to Spring Boot
+React JS + Vite sends request to Spring Boot
         |
-Spring Boot sends request to Python AI service
+Spring Boot builds a structured prompt
         |
-Python creates structured prompt
+Spring AI sends prompt to the LLM
         |
 LLM returns JSON file list
         |
@@ -910,13 +830,9 @@ Response:
 employee-crud.zip
 ```
 
-## Python API
+## Spring AI Response Shape
 
-```http
-POST /api/code/generate
-```
-
-Python response to Spring Boot:
+Spring AI should ask the LLM to return this JSON shape:
 
 ```json
 {
@@ -938,14 +854,14 @@ Python response to Spring Boot:
 
 Spring Boot should:
 
-- Receive file list from Python
+- Receive file list from Spring AI response
 - Create ZIP using ZipOutputStream
 - Add each generated file as ZipEntry
 - Return file as downloadable response
 
 ## Important Prompt Rules
 
-Python prompt should force AI to return valid JSON only.
+Spring AI prompt should force the LLM to return valid JSON only.
 
 Prompt should include:
 
@@ -1062,12 +978,6 @@ Response:
 }
 ```
 
-## Python API
-
-```http
-POST /api/code/review
-```
-
 ## Review Categories
 
 AI should check:
@@ -1094,12 +1004,6 @@ AI generates:
 
 ```http
 POST /api/projects/{projectId}/tests/generate
-```
-
-## Python API
-
-```http
-POST /api/tests/generate
 ```
 
 ## Generated Test Files
@@ -1170,7 +1074,7 @@ Add:
 - Clean DTOs
 - Proper package structure
 
-### AI Service Polish
+### Spring AI Polish
 
 Add:
 
@@ -1191,9 +1095,8 @@ docker-compose.yml
 Services:
 
 ```text
-frontend
-spring-backend
-python-ai-service
+frontend-react
+backend-java
 postgres
 chromadb
 ```
@@ -1270,8 +1173,8 @@ Shows:
 ```text
 Monday    - Backend task
 Tuesday   - Backend task
-Wednesday - Python AI task
-Thursday  - React integration
+Wednesday - Spring AI task
+Thursday  - React JS + Vite integration
 Friday    - Testing/debugging
 Saturday  - Feature completion
 Sunday    - README, cleanup, commit
@@ -1286,11 +1189,11 @@ If time becomes tight, build only these features:
 ```text
 1. Login/Register
 2. Create Project
-3. Spring Boot to Python AI integration
+3. Spring AI integration
 4. Requirement Analyzer
 5. Code Generator
 6. ZIP Download
-7. Basic React UI
+7. Basic React JS + Vite UI
 8. README
 ```
 
@@ -1320,7 +1223,7 @@ After 2 months, you can add:
 - Monaco editor
 - GitHub repository import
 - Jira story generator
-- LangGraph multi-agent workflow
+- Spring AI advisors and tool calling
 - Architecture diagram generator
 - PR review automation
 - SonarQube integration
@@ -1334,20 +1237,16 @@ After 2 months, you can add:
 ```text
 ai-software-engineering-assistant
 
-├── frontend
+├── frontend-react
 │   ├── src
 │   ├── package.json
+│   ├── vite.config.js
 │   └── README.md
 │
-├── backend
+├── backend-java
 │   ├── src/main/java
 │   ├── src/main/resources
 │   ├── pom.xml
-│   └── README.md
-│
-├── ai-service
-│   ├── app
-│   ├── requirements.txt
 │   └── README.md
 │
 ├── docker-compose.yml
@@ -1595,7 +1494,7 @@ Code:
 
 Use this explanation:
 
-> I built an AI Software Engineering Assistant where Spring Boot acts as the main backend and orchestrates React UI, PostgreSQL, authentication, and the Python GenAI service. The Python service handles LLM calls, RAG, embeddings, and prompt templates. Users can upload project documents, ask contextual questions, analyze requirements, generate Spring Boot code, download generated modules as ZIP files, review Java code, and generate unit tests.
+> I built an AI Software Engineering Assistant where Spring Boot acts as the main backend and uses Spring AI for LLM calls, RAG, embeddings, and prompt templates. The React JS + Vite frontend handles the user workspace, while Spring Boot manages authentication, PostgreSQL persistence, document processing, code generation, ZIP downloads, code review, and unit test generation.
 
 ---
 
@@ -1604,9 +1503,9 @@ Use this explanation:
 Use these bullets:
 
 ```text
-Built an AI Software Engineering Assistant using Java 21, Spring Boot 3, React, Python FastAPI, LangChain, and ChromaDB to automate requirement analysis, code generation, code review, and project knowledge retrieval.
+Built an AI Software Engineering Assistant using Java 21, Spring Boot 3, Spring AI, React JS, Vite, JavaScript, PostgreSQL, and ChromaDB to automate requirement analysis, code generation, code review, and project knowledge retrieval.
 
-Designed a microservice-based architecture where Spring Boot acts as the primary API layer and communicates with a Python GenAI service for LLM orchestration and RAG workflows.
+Designed a full-stack architecture where Spring Boot acts as the primary API layer and uses Spring AI ChatClient, embeddings, and vector search for LLM orchestration and RAG workflows.
 
 Implemented a GenAI-powered Spring Boot code generator that converts feature requirements into downloadable Java project ZIP files containing entities, DTOs, repositories, services, controllers, exception handlers, and API response classes.
 
@@ -1623,18 +1522,17 @@ By the end of 2 months, you should have:
 
 ```text
 1. GitHub repository
-2. Working React frontend
-3. Working Spring Boot backend
-4. Working Python FastAPI GenAI service
-5. PostgreSQL database
-6. ChromaDB vector database
-7. Requirement analyzer
-8. RAG chatbot
-9. Code generator with ZIP download
-10. Code review assistant
-11. Good README
-12. Screenshots
-13. Resume bullets
+2. Working React JS + Vite frontend
+3. Working Spring Boot backend with Spring AI
+4. PostgreSQL database
+5. ChromaDB vector database
+6. Requirement analyzer
+7. RAG chatbot
+8. Code generator with ZIP download
+9. Code review assistant
+10. Good README
+11. Screenshots
+12. Resume bullets
 ```
 
 This is enough to confidently present yourself as a:

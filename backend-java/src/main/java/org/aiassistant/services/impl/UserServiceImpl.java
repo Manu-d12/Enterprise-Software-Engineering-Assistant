@@ -24,11 +24,13 @@ public class UserServiceImpl implements UserService {
         return this.modelMapper.map(savedUser, UserRegisterDTO.class);
     }
 
+    @Transactional
     @Override
     public User findUserByUsername(String username) {
         return userRepo.findByEmail(username);
     }
 
+    @Transactional
     @Override
     public User findById(String id) {
         return userRepo.findById(Long.parseLong(id)).get();

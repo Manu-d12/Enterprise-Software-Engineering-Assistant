@@ -1,8 +1,6 @@
 package org.aiassistant.jwt;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import org.aiassistant.repositories.UserRepo;
 import org.aiassistant.services.UserService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

@@ -6,11 +6,8 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
-  FormControlLabel,
   IconButton,
   InputAdornment,
-  Stack,
   TextField,
   Typography,
 } from "@mui/material";
@@ -21,14 +18,14 @@ import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import AuthLayout from "../components/AuthLayout";
 import { loginUser } from "../api/auth";
+import { useAuth } from "../context/useAuth";
 
-const getAccessToken = (data) => data?.accessToken || data?.token || data?.jwt;
 
 const Login = () => {
+  const { storeUserInfo } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    rememberMe: true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,35 +33,14 @@ const Login = () => {
   const [success, setSuccess] = useState("");
 
   const handleChange = (event) => {
-    const { checked, name, type, value } = event.target;
+    const { name, value } = event.target;
 
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     });
   };
 
-  const persistSession = (data) => {
-    const storage = formData.rememberMe ? localStorage : sessionStorage;
-    const otherStorage = formData.rememberMe ? sessionStorage : localStorage;
-    const accessToken = getAccessToken(data);
-
-    otherStorage.removeItem("accessToken");
-    otherStorage.removeItem("refreshToken");
-    otherStorage.removeItem("user");
-
-    if (accessToken) {
-      storage.setItem("accessToken", accessToken);
-    }
-
-    if (data?.refreshToken) {
-      storage.setItem("refreshToken", data.refreshToken);
-    }
-
-    if (data?.user) {
-      storage.setItem("user", JSON.stringify(data.user));
-    }
-  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -75,11 +51,10 @@ const Login = () => {
       setLoading(true);
 
       const response = await loginUser({
-        email: formData.email,
+        username: formData.email,
         password: formData.password,
       });
-
-      persistSession(response.data);
+      storeUserInfo(response.data);
       setSuccess("Signed in successfully.");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
@@ -186,38 +161,6 @@ const Login = () => {
                 },
               }}
             />
-
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              mt={1}
-              gap={2}
-            >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.rememberMe}
-                    name="rememberMe"
-                    onChange={handleChange}
-                    sx={{
-                      color: "#7c3aed",
-                      "&.Mui-checked": {
-                        color: "#6d28d9",
-                      },
-                    }}
-                  />
-                }
-                label="Remember me"
-                sx={{
-                  mr: 0,
-                  ".MuiFormControlLabel-label": {
-                    color: "text.secondary",
-                    fontSize: 14,
-                  },
-                }}
-              />
-            </Stack>
 
             <Button
               fullWidth
