@@ -1,0 +1,62 @@
+package org.aiassistant.services.impl;
+
+import org.aiassistant.ai.services.DocumentIngestionReaderService;
+import org.aiassistant.dtos.DocumentDTO;
+import org.aiassistant.entities.Document;
+import org.aiassistant.entities.Project;
+import org.aiassistant.repositories.DocumentRepo;
+import org.aiassistant.services.DocumentService;
+import org.aiassistant.services.ProjectService;
+import org.aiassistant.utils.FileUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class DocumentServiceImpl implements DocumentService {
+    private final String docsPath;
+    private final DocumentRepo documentRepo;
+    private final DocumentIngestionReaderService documentIngestionReaderService;
+    private final ProjectService projectService;
+
+    public DocumentServiceImpl(
+            @Value("${project.document.upload-path}") String docsPath,
+            DocumentRepo documentRepo,
+            DocumentIngestionReaderService documentIngestionReaderService,
+            ProjectService projectService
+    ) {
+        this.docsPath = docsPath;
+        this.documentRepo = documentRepo;
+        this.documentIngestionReaderService = documentIngestionReaderService;
+        this.projectService = projectService;
+    }
+
+    @Transactional
+    @Override
+    public List<DocumentDTO> uploadDocument(String projectId, MultipartFile[] files) {
+        Project currentProject = projectService.findById(projectId);
+        documentIngestionReaderService.ingestDocs(projectId, files);
+        List<Document> toSave = new ArrayList<>();
+
+        for(MultipartFile file : files) {
+            String localFilePath = getLocalFilePath(projectId) + File.separator + file.getOriginalFilename();
+            FileUtil.upload(file, localFilePath);
+
+            toSave.add(Document.builder().url(localFilePath).project(currentProject).build());
+        }
+
+        return documentRepo.saveAll(toSave).stream().map(
+                doc -> DocumentDTO.builder().id(doc.getId()).url(doc.getUrl()).build()
+        ).toList();
+    }
+
+    private String getLocalFilePath(String projectId) {
+        return System.getProperty("user.dir") + File.separator + docsPath + File.separator + ("project-" + projectId);
+    }
+}

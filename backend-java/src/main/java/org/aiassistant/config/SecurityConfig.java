@@ -2,9 +2,7 @@ package org.aiassistant.config;
 
 import lombok.AllArgsConstructor;
 import org.aiassistant.jwt.JwtAuthenticationFilter;
-import org.aiassistant.jwt.JwtService;
 import org.aiassistant.jwt.UserDetailService;
-import org.aiassistant.repositories.UserRepo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;

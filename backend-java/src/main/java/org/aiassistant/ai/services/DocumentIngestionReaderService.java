@@ -157,7 +157,7 @@ public class DocumentIngestionReaderService {
         List<Document> docs = store.similaritySearch(
                 SearchRequest.builder()
                         .query(question)
-                        .topK(5)
+                        .topK(20)
                         .build());
 
         if (docs.isEmpty()) {

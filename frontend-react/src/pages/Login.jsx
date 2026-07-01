@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -23,6 +23,7 @@ import { useAuth } from "../context/useAuth";
 
 const Login = () => {
   const { storeUserInfo } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -56,6 +57,7 @@ const Login = () => {
       });
       storeUserInfo(response.data);
       setSuccess("Signed in successfully.");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
