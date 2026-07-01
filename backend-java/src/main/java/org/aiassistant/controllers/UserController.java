@@ -5,9 +5,6 @@ import org.aiassistant.entities.User;
 import org.aiassistant.services.UserService;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @AllArgsConstructor
 @RestController
 @RequestMapping("/users")
