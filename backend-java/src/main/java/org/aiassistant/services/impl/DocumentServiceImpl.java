@@ -8,6 +8,7 @@ import org.aiassistant.repositories.DocumentRepo;
 import org.aiassistant.services.DocumentService;
 import org.aiassistant.services.ProjectService;
 import org.aiassistant.utils.FileUtil;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,17 +25,19 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepo documentRepo;
     private final DocumentIngestionReaderService documentIngestionReaderService;
     private final ProjectService projectService;
+    private final ModelMapper modelMapper;
 
     public DocumentServiceImpl(
             @Value("${project.document.upload-path}") String docsPath,
             DocumentRepo documentRepo,
             DocumentIngestionReaderService documentIngestionReaderService,
-            ProjectService projectService
-    ) {
+            ProjectService projectService,
+            ModelMapper modelMapper) {
         this.docsPath = docsPath;
         this.documentRepo = documentRepo;
         this.documentIngestionReaderService = documentIngestionReaderService;
         this.projectService = projectService;
+        this.modelMapper = modelMapper;
     }
 
     @Transactional
@@ -54,6 +57,14 @@ public class DocumentServiceImpl implements DocumentService {
         return documentRepo.saveAll(toSave).stream().map(
                 doc -> DocumentDTO.builder().id(doc.getId()).url(doc.getUrl()).build()
         ).toList();
+    }
+
+    @Override
+    public List<DocumentDTO> getDocsByProject(String projectId) {
+        Project project = projectService.findById(projectId);
+        List<Document> byProject = this.documentRepo.findByProject(project);
+
+        return byProject.stream().map(doc -> modelMapper.map(doc, DocumentDTO.class)).toList();
     }
 
     private String getLocalFilePath(String projectId) {

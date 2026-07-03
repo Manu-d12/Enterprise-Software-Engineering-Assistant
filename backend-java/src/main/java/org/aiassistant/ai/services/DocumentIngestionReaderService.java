@@ -17,6 +17,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.List;
@@ -139,6 +140,18 @@ public class DocumentIngestionReaderService {
         return chatClient.prompt(prompt).call().content();
     }
 
+
+    public Flux<String> queryStream(String projectId, String userQuery) {
+        VectorStore store = forProject(projectId);
+        PromptTemplate template = new PromptTemplate(SYSTEM_PROMPT);
+        Prompt prompt = template.create(Map.of(
+                "context", retrieveContext(store, userQuery),
+                "userQuestion", userQuery
+        ));
+
+        return chatClient.prompt(prompt).stream().content();
+    }
+
     private VectorStore forProject(String projectId) {
         String collection = PROJECT_COLLECTION_PREFIX + projectId;
         ChromaVectorStore store = ChromaVectorStore.builder(chromaApi, embeddingModel)
@@ -157,7 +170,7 @@ public class DocumentIngestionReaderService {
         List<Document> docs = store.similaritySearch(
                 SearchRequest.builder()
                         .query(question)
-                        .topK(20)
+                        .topK(8)
                         .build());
 
         if (docs.isEmpty()) {

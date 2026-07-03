@@ -2,10 +2,13 @@ package org.aiassistant.ai.controllers;
 
 import lombok.AllArgsConstructor;
 import org.aiassistant.ai.services.DocumentIngestionReaderService;
+import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Flux;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,5 +43,13 @@ public class RagChatController {
         response.put("content", result);
         response.put("projectId", projectId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(value = "/askStream/{projectId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> queryStream(
+            @PathVariable String projectId,
+            @RequestParam String q
+    ) {
+        return documentIngestionReaderService.queryStream(projectId, q);
     }
 }

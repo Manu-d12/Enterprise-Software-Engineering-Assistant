@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface DocumentService {
     List<DocumentDTO> uploadDocument(String projectId, MultipartFile[] files);
+    List<DocumentDTO> getDocsByProject(String projectId);
 }

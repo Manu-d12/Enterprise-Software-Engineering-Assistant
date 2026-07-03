@@ -9,6 +9,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @AllArgsConstructor
@@ -28,5 +29,11 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public Project findById(String projectId) {
         return this.projectRepo.findById(Long.parseLong(projectId)).get();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Project> getAll() {
+        return projectRepo.findAll();
     }
 }

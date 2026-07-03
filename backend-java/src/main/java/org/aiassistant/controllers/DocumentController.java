@@ -19,13 +19,21 @@ public class DocumentController {
 
     private final DocumentService documentService;
 
-    @PostMapping("/create")
+    @PostMapping("/create/{projectId}")
     public ResponseEntity<List<DocumentDTO>> saveDocs(
-            @RequestParam String projectId,
+            @PathVariable String projectId,
             @RequestParam MultipartFile[] files
     ) {
         List<DocumentDTO> documents = documentService.uploadDocument(projectId, files);
         return new ResponseEntity<>(documents, HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<DocumentDTO>> getProjectDocs(
+            @RequestParam String projectId
+    ) {
+        List<DocumentDTO> docsByProject = documentService.getDocsByProject(projectId);
+        return ResponseEntity.ok(docsByProject);
     }
 
 }
