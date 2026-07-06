@@ -171,6 +171,7 @@ public class DocumentIngestionReaderService {
                 SearchRequest.builder()
                         .query(question)
                         .topK(8)
+                        .similarityThreshold(0.3)
                         .build());
 
         if (docs.isEmpty()) {

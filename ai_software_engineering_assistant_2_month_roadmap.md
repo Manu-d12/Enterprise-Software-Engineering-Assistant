@@ -6,10 +6,10 @@ Build an **AI Software Engineering Assistant** for Java/Spring Boot developers.
 
 The application will allow users to:
 
-- Register and login
-- Create software projects
+- Register and login (done)
+- Create software projects (done)
 - Upload requirement documents or coding standards
-- Ask questions from uploaded documents using RAG
+- Ask questions from uploaded documents using RAG (done)
 - Generate Spring Boot code from requirements
 - Generate a downloadable ZIP file containing Java project/module files
 - Review Java code using AI

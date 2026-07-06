@@ -1,0 +1,6 @@
+package org.aiassistant.ai.dtos;
+
+public enum NfrCategory {
+    PERFORMANCE, SECURITY, SCALABILITY, RELIABILITY,
+    USABILITY, MAINTAINABILITY, AVAILABILITY, PORTABILITY
+}

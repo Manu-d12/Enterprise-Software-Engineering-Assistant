@@ -45,7 +45,7 @@ public class RagChatController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping(value = "/askStream/{projectId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/askStream1/{projectId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> queryStream(
             @PathVariable String projectId,
             @RequestParam String q

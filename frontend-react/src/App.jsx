@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import ComingSoon from "./pages/ComingSoon";
+import RequirementAnalyzer from "./pages/RequirementAnalyzer";
 import DashboardLayout from "./components/DashboardLayout";
 import "./App.css";
 
@@ -24,10 +25,7 @@ function App() {
           <Route path="chat" element={<ComingSoon title="AI Chat" />} />
           <Route path="code-generator" element={<ComingSoon title="Code Generator" />} />
           <Route path="code-review" element={<ComingSoon title="Code Review" />} />
-          <Route
-            path="requirement-analyzer"
-            element={<ComingSoon title="Requirement Analyzer" />}
-          />
+          <Route path="requirement-analyzer" element={<RequirementAnalyzer />} />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
         </Route>
 

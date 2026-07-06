@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
-import { askProjectStream } from "../../api/chat";
+import { askProject } from "../../api/chat";
 
 const ProjectChat = ({ projectId }) => {
   const [messages, setMessages] = useState([]);
@@ -28,12 +28,12 @@ const ProjectChat = ({ projectId }) => {
     const question = input.trim();
     if (!question || loading) return;
 
-    // Append the user turn plus an empty assistant turn that we stream into.
+    // Append the user turn plus an empty assistant turn we fill once the answer returns.
     const assistantIndex = messages.length + 1;
     setMessages((prev) => [
       ...prev,
       { role: "user", content: question },
-      { role: "assistant", content: "", streaming: true },
+      { role: "assistant", content: "" },
     ]);
     setInput("");
     setLoading(true);
@@ -47,18 +47,13 @@ const ProjectChat = ({ projectId }) => {
     };
 
     try {
-      await askProjectStream(projectId, question, {
-        onChunk: (_piece, full) => {
-          updateAssistant({ content: full });
-        },
-      });
-      updateAssistant({ streaming: false });
+      const { data } = await askProject(projectId, question);
+      updateAssistant({ content: data?.content ?? "" });
     } catch (err) {
       updateAssistant({
         content:
           err.message || "Something went wrong. Please try again.",
         error: true,
-        streaming: false,
       });
     } finally {
       setLoading(false);
