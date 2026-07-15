@@ -7,6 +7,7 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 public class ProjectConfiguration {
@@ -23,6 +24,19 @@ public class ProjectConfiguration {
                 .noBackoff()
                 .retryOn(InvalidAnalysisException.class)
                 .build();
+    }
+
+
+    @Bean("codeGenExecutor")
+    public ThreadPoolTaskExecutor codeGenExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(50);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("codegen-");
+        executor.initialize();
+        return executor;
     }
 
 }

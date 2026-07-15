@@ -6,6 +6,7 @@ import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
@@ -20,6 +21,7 @@ public class RagChatController {
 
     private final DocumentIngestionReaderService documentIngestionReaderService;
 
+    @Retryable
     @PostMapping("/upload/{projectId}")
     public ResponseEntity<String> ingestDocs(
             @RequestParam MultipartFile[] files,
