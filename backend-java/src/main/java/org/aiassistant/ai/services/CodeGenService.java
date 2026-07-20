@@ -2,13 +2,15 @@ package org.aiassistant.ai.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import org.aiassistant.ai.dtos.codegen.Blueprint;
 import org.aiassistant.ai.dtos.codegen.PlannedFile;
 import org.aiassistant.ai.tools.ContractTool;
 import org.aiassistant.ai.tools.FileTools;
 import org.aiassistant.ai.utils.Helper;
 import org.aiassistant.utils.FileUtil;
+import org.aiassistant.utils.ZipUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -32,6 +34,8 @@ import java.util.UUID;
 @Service
 public class CodeGenService {
 
+    private static final Logger log = LoggerFactory.getLogger(CodeGenService.class);
+
     private static final String CONTENT_MARKER = "<<<CONTENT>>>";
 
     private static final String INTERFACE_MARKER = "<<<INTERFACE>>>";
@@ -48,6 +52,8 @@ public class CodeGenService {
 
     private final String codegenWorkspaceDir;
 
+    private final String codeGenZipFileWorkspace;
+
     private final FileTools fileTools;
 
     public CodeGenService(
@@ -57,6 +63,7 @@ public class CodeGenService {
             RetryTemplate retryTemplate,
             @Value("${code.gen.project-blueprint-path}") String blueprintDir,
             @Value("${codegen.workspace.dir}") String codegenWorkspaceDir,
+            @Value("${codegen.zip.workspace}") String codeGenZipFileWorkspace,
             FileTools fileTools
     ) {
         this.taskExecutor = taskExecutor;
@@ -65,40 +72,85 @@ public class CodeGenService {
         this.retryTemplate = retryTemplate;
         this.blueprintDir = blueprintDir;
         this.codegenWorkspaceDir = codegenWorkspaceDir;
+        this.codeGenZipFileWorkspace = codeGenZipFileWorkspace;
         this.fileTools = fileTools;
     }
 
-    public void planAndGenCode(String requirement) {
-        SseEmitter emitter = new SseEmitter();
-        taskExecutor.submit(() -> {
-            try {
-                SseEmitter.SseEventBuilder event = SseEmitter.event()
-                        .data("SSE MVC - " + System.currentTimeMillis())
-                        .id(String.valueOf("i"))
-                        .name("sse event - mvc");
+    /* No timeout — a full code-generation run can legitimately take several minutes. */
+    private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L;
 
-                String codeGenJobId = UUID.randomUUID().toString();
+    /* SSE event names the frontend can subscribe to. */
+    private static final String EVENT_PROGRESS = "progress";
+    private static final String EVENT_COMPLETE = "complete";
+    private static final String EVENT_ERROR = "error";
+    private static final String EVENT_ZIP_CONVERSION = "zip";
+
+    public SseEmitter planAndGenCode(String requirement) {
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        taskExecutor.submit(() -> {
+            String codeGenJobId = UUID.randomUUID().toString();
+            try {
+                sendProgress(emitter, "Code generation started. Job ID: " + codeGenJobId);
+
                 /*
                  * Step 1. Requirement Call to LLM
                  * */
+                sendProgress(emitter, "Step 1/5 — Analyzing your requirement and designing the project blueprint...");
                 Blueprint projectBluePrint = getProjectBluePrint(requirement);
+                if (projectBluePrint == null) {
+                    sendEvent(emitter, EVENT_ERROR, "Unable to build a project blueprint from the requirement. Aborting.");
+                    emitter.complete();
+                    return;
+                }
+                int backendCount = projectBluePrint.backendFiles() == null ? 0 : projectBluePrint.backendFiles().size();
+                int frontendCount = projectBluePrint.frontendFiles() == null ? 0 : projectBluePrint.frontendFiles().size();
+                sendProgress(emitter, "Blueprint ready — " + backendCount + " backend file(s) and "
+                        + frontendCount + " frontend file(s) planned.");
+
                 /*
                  * Step 2. Save the contract/blue to the disk
                  * Sort the backend/frontend files by Rank ASC Order
                  * (Single source of truth)
                  * */
+                sendProgress(emitter, "Step 2/5 — Ordering planned files and saving the project blueprint...");
                 sortFilesByRank(projectBluePrint);
                 writeBluePrintToDisk(projectBluePrint, codeGenJobId);
+                sendProgress(emitter, "Project blueprint saved to disk.");
+
                 /*
                  * Step 3. Iterate over the files
                  * Backend first --> frontend and generate the actual content.
                  * */
-                generateProjectFiles(projectBluePrint, codeGenJobId);
-            } catch (Exception ignored) {}
+                sendProgress(emitter, "Step 3/5 — Generating project files...");
+                generateProjectFiles(projectBluePrint, codeGenJobId, emitter);
+
+                sendEvent(emitter, EVENT_COMPLETE, "Code generation completed successfully. Job ID: " + codeGenJobId);
+
+                sendEvent(emitter, EVENT_ZIP_CONVERSION, "Converting the code into the ZIP format.");
+
+                String sourceDir = System.getProperty("user.dir")
+                        + File.separator + codegenWorkspaceDir
+                        + File.separator + codeGenJobId;
+
+                String destZipDir = System.getProperty("user.dir")
+                        + File.separator + codeGenZipFileWorkspace
+                        + File.separator + codeGenJobId + ".zip";
+
+                ZipUtil.createZipFile(sourceDir, destZipDir);
+
+                sendEvent(emitter, EVENT_ZIP_CONVERSION, "Zip Conversion Done...");
+
+                emitter.complete();
+            } catch (Exception ex) {
+                log.error("Code generation failed for job {}", codeGenJobId, ex);
+                sendEvent(emitter, EVENT_ERROR, "Code generation failed: " + ex.getMessage());
+                emitter.completeWithError(ex);
+            }
         });
+        return emitter;
     }
 
-    private void generateProjectFiles(Blueprint blueprint, String codeGenJobId) {
+    private void generateProjectFiles(Blueprint blueprint, String codeGenJobId, SseEmitter emitter) {
 
         if(blueprint == null) return;
 
@@ -111,14 +163,19 @@ public class CodeGenService {
         Map<String, String> generatedFiles = new LinkedHashMap<>();
 
         /* Backend first so their interfaces are available to the frontend. */
-        generateFiles(blueprint, blueprint.backendFiles(), interfaceIndexMap, generatedFiles, "backend");
-        generateFiles(blueprint, blueprint.frontendFiles(), interfaceIndexMap, generatedFiles, "frontend");
+        generateFiles(blueprint, blueprint.backendFiles(), interfaceIndexMap, generatedFiles, "backend", emitter);
+        generateFiles(blueprint, blueprint.frontendFiles(), interfaceIndexMap, generatedFiles, "frontend", emitter);
 
         /* Step 4. All files generated — persist them to the codegen workspace. */
+        sendProgress(emitter, "Step 4/5 — Writing " + generatedFiles.size()
+                + " generated file(s) to the workspace...");
         writeGeneratedFilesToWorkspace(generatedFiles, codeGenJobId);
+        sendProgress(emitter, "All generated files written to the workspace.");
 
         /*Step 5. Save the interface index... also to the Disk ...*/
+        sendProgress(emitter, "Step 5/5 — Saving the interface index...");
         writeGeneratedInterfaceIndexToWorkspace(interfaceIndexMap, codeGenJobId);
+        sendProgress(emitter, "Interface index saved.");
     }
 
     private void writeGeneratedInterfaceIndexToWorkspace(Map<String, String> interfaceIndexMap, String codeGenJobId) {
@@ -142,16 +199,57 @@ public class CodeGenService {
                                List<PlannedFile> files,
                                Map<String, String> interfaceIndexMap,
                                Map<String, String> generatedFiles,
-                               String basePath) {
-        if (files == null) return;
+                               String basePath,
+                               SseEmitter emitter) {
+        if (files == null || files.isEmpty()) return;
 
+        int total = files.size();
+        sendProgress(emitter, "Generating " + basePath + " files (" + total + " to build)...");
+
+        int index = 0;
         for (PlannedFile file : files) {
+            index++;
+            String label = "[" + basePath + " " + index + "/" + total + "] ";
+            String relativePath = basePath + File.separator + file.path();
+
+            sendProgress(emitter, label + "Building context for " + file.path() + "...");
             String context = generateFileContext(file, interfaceIndexMap);
+
+            sendProgress(emitter, label + "Generating " + file.path() + "...");
             GeneratedFile response = generateFile(blueprint, context);
             if (response != null) {
-                interfaceIndexMap.put(basePath + File.separator + file.path(), response.interfaceIndex());
-                generatedFiles.put(basePath + File.separator + file.path(), response.content());
+                interfaceIndexMap.put(relativePath, response.interfaceIndex());
+                generatedFiles.put(relativePath, response.content());
+                sendProgress(emitter, label + "Completed " + file.path());
+            } else {
+                sendProgress(emitter, label + "Skipped " + file.path() + " (no content was generated).");
             }
+        }
+
+        sendProgress(emitter, "Finished generating " + basePath + " files.");
+    }
+
+    /**
+     * Emits a human-readable progress line to the client under the {@code progress} event.
+     * Delegates to {@link #sendEvent}.
+     */
+    private void sendProgress(SseEmitter emitter, String message) {
+        sendEvent(emitter, EVENT_PROGRESS, message);
+    }
+
+    /**
+     * Sends a single SSE event to the client. Any failure (typically the client having
+     * disconnected) is swallowed so it never interrupts the generation flow.
+     */
+    private void sendEvent(SseEmitter emitter, String eventName, String message) {
+        if (emitter == null) return;
+        try {
+            emitter.send(SseEmitter.event()
+                    .id(String.valueOf(System.currentTimeMillis()))
+                    .name(eventName)
+                    .data(message));
+        } catch (Exception ignored) {
+            // Client likely disconnected; keep generating without failing the run.
         }
     }
 
@@ -369,12 +467,6 @@ public class CodeGenService {
         }
     }
 
-//    @PostConstruct
-//    public void init() {
-//        try {
-//            planAndGenCode("A Full Stack React js + JavaScript only and Spring boot login page and having full depedencies like pom.xml and package.json for frontend and all of that. Also provide the md file in frontend file where steps written to run the frontend and backend....");
-//        } catch (Exception ignored) {}
-//    }
 
     private String getBluePrintFilePath(String codeGenJobId) {
         return System.getProperty("user.dir") + File.separator + blueprintDir + File.separator + (codeGenJobId + ".json");

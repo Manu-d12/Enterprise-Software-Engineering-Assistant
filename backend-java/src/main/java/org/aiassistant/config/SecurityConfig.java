@@ -1,5 +1,6 @@
 package org.aiassistant.config;
 
+import jakarta.servlet.DispatcherType;
 import lombok.AllArgsConstructor;
 import org.aiassistant.jwt.JwtAuthenticationFilter;
 import org.aiassistant.jwt.UserDetailService;
@@ -37,6 +38,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))// Disable only if appropriate for your API architecture
                 .authorizeHttpRequests(auth -> auth
+                        // The initial (REQUEST) dispatch is authenticated by the JWT filter.
+                        // Async re-dispatches (e.g. SSE / SseEmitter completion) and error
+                        // forwards run on a different thread where the JWT filter — a
+                        // OncePerRequestFilter — is skipped, leaving no Authentication.
+                        // Permit those dispatch types so streaming responses aren't denied.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .anyRequest().authenticated()
                 ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
