@@ -1,18 +1,27 @@
 import axios from "axios";
 
+let authToken = "";
+
+export const setAuthToken = (token) => {
+  authToken = token || "";
+};
+
+export const getAuthToken = () => authToken;
+
+export const BASE_URL = import.meta.env.VITE_AI_ASSISTANT_BASE_URL;
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8080/ai-assistant",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (authToken) {
+    config.headers.Authorization = `Bearer ${authToken}`;
+  } else {
+    delete config.headers.Authorization;
   }
 
   return config;

@@ -1,22 +1,19 @@
 package org.aiassistant.controllers;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import lombok.AllArgsConstructor;
+import org.aiassistant.entities.User;
+import org.aiassistant.services.UserService;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
+@AllArgsConstructor
 @RestController
 @RequestMapping("/users")
 public class UserController {
 
-    @GetMapping
-    public Map<String, String> helloUser() {
-        Map<String, String> res = new HashMap<>();
-        res.put("email", "mdnu00066@gmail.com");
-        res.put("name", "Manoj Dhiman");
-        res.put("age", "25");
-        return res;
+    private final UserService userService;
+
+    @GetMapping("/{id}")
+    public User getUserById(@PathVariable String id) {
+        return userService.findById(id);
     }
 }
