@@ -217,6 +217,7 @@ public class CodeGenService {
 
             sendProgress(emitter, label + "Generating " + file.path() + "...");
             GeneratedFile response = generateFile(blueprint, context);
+
             if (response != null) {
                 interfaceIndexMap.put(relativePath, response.interfaceIndex());
                 generatedFiles.put(relativePath, response.content());

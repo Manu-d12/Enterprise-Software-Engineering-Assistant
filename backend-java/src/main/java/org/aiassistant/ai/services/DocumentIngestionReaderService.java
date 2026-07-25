@@ -1,5 +1,7 @@
 package org.aiassistant.ai.services;
 
+import org.aiassistant.entities.Project;
+import org.aiassistant.services.ProjectService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -13,6 +15,7 @@ import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,9 +34,16 @@ import java.util.stream.Collectors;
 @Service
 public class DocumentIngestionReaderService {
 
+    private final ProjectService projectService;
+
+    private final Resource fileSummaryGenSystemPrompt;
+
     private final EmbeddingModel embeddingModel;
+
     private final ChatClient chatClient;
+
     private final ChromaApi chromaApi;
+
     private static final String SYSTEM_PROMPT = """
         You are a helpful assistant that answers questions based strictly on the
         provided context.
@@ -57,11 +70,15 @@ public class DocumentIngestionReaderService {
     public DocumentIngestionReaderService (
             EmbeddingModel embeddingModel,
             @Qualifier("OpenAIChatClient") ChatClient chatClient,
-            ChromaApi chromaApi
+            ChromaApi chromaApi,
+            ProjectService projectService,
+            @Value("classpath:prompts/file-summary-generator-system-prompt.st") Resource fileSummaryGenSystemPrompt
     ) {
         this.chatClient = chatClient;
         this.embeddingModel = embeddingModel;
         this.chromaApi = chromaApi;
+        this.projectService = projectService;
+        this.fileSummaryGenSystemPrompt = fileSummaryGenSystemPrompt;
     }
 
 
@@ -72,6 +89,7 @@ public class DocumentIngestionReaderService {
             return;
         }
 
+        Map<String, String> summary = new HashMap<>();
         VectorStore store = forProject(projectId);
         TokenTextSplitter splitter = new TokenTextSplitter();
 
@@ -118,16 +136,24 @@ public class DocumentIngestionReaderService {
 
                 store.add(chunks);
 
+                generateFileSummary(file, summary);
+
             } catch (IOException e) {
                 throw new RuntimeException(
                         "Failed to read file: " + file.getOriginalFilename(), e);
             } catch (Exception e) {
                 throw new RuntimeException(
                         "Failed to ingest file: " + file.getOriginalFilename(), e);
+            } finally {
+                Project project = projectService.findById(projectId);
+                if(project.getFileSummaries() != null) {
+                    summary.putAll(project.getFileSummaries());
+                }
+                project.setFileSummaries(summary);
+                projectService.save(project);
             }
         }
     }
-
 
     public String query(String projectId, String userQuery) {
         VectorStore store = forProject(projectId);
@@ -140,7 +166,6 @@ public class DocumentIngestionReaderService {
         return chatClient.prompt(prompt).call().content();
     }
 
-
     public Flux<String> queryStream(String projectId, String userQuery) {
         VectorStore store = forProject(projectId);
         PromptTemplate template = new PromptTemplate(SYSTEM_PROMPT);
@@ -150,6 +175,29 @@ public class DocumentIngestionReaderService {
         ));
 
         return chatClient.prompt(prompt).stream().content();
+    }
+
+
+    public void generateFileSummary(MultipartFile file, Map<String, String> summary) {
+        String fileName = file.getOriginalFilename();
+
+        String content;
+        try {
+            content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read file: " + fileName, e);
+        }
+
+        String fileSummary = this.chatClient
+                .prompt()
+                .system(fileSummaryGenSystemPrompt)
+                .user(u -> u.text("File name: {name}\n\nContent:\n{content}")
+                        .param("name", fileName)
+                        .param("content", content))
+                .call()
+                .content();
+
+        summary.put(fileName, fileSummary);
     }
 
     private VectorStore forProject(String projectId) {

@@ -2,9 +2,13 @@ package org.aiassistant.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -30,6 +34,14 @@ public class Project {
     private LocalDateTime createdDate;
 
     private LocalDateTime lastModifiedDate;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "json")
+    private Map<String, String> fileSummaries;
 
     @PrePersist
     protected void onCreate() {

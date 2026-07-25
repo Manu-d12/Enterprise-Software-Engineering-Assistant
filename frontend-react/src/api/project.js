@@ -2,7 +2,7 @@ import axiosClient from "./axiosClient";
 
 // GET /projects -> [{ id, name, description, createdDate, lastModifiedDate }]
 export const getProjects = () => {
-  return axiosClient.get("/projects");
+  return axiosClient.get("/projects/user");
 };
 
 // GET /projects/{id} -> { id, name, description, createdDate, lastModifiedDate }

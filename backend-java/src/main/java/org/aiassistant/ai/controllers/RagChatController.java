@@ -2,7 +2,6 @@ package org.aiassistant.ai.controllers;
 
 import lombok.AllArgsConstructor;
 import org.aiassistant.ai.services.DocumentIngestionReaderService;
-import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
