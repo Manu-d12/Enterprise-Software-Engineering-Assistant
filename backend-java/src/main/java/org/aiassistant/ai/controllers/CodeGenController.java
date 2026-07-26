@@ -20,8 +20,8 @@ public class CodeGenController {
 
     @GetMapping
     public SseEmitter streamSseMvc(
-            @RequestParam String q
+            @RequestParam String projectId
     ) {
-        return codeGenService.planAndGenCode(q);
+        return codeGenService.planAndGenCode(projectId);
     }
 }
