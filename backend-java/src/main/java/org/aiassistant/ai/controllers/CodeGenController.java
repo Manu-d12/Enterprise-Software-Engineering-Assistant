@@ -2,6 +2,10 @@ package org.aiassistant.ai.controllers;
 
 import lombok.AllArgsConstructor;
 import org.aiassistant.ai.services.CodeGenService;
+import org.aiassistant.entities.User;
+import org.aiassistant.services.UserService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,11 +21,14 @@ import java.util.concurrent.Executors;
 public class CodeGenController {
 
     private final CodeGenService codeGenService;
+    private final UserService userService;
 
     @GetMapping
     public SseEmitter streamSseMvc(
-            @RequestParam String q
-    ) {
-        return codeGenService.planAndGenCode(q);
+            @RequestParam String projectId,
+            @AuthenticationPrincipal UserDetails userDetails
+            ) {
+        User user = userService.findUserByUsername(userDetails.getUsername());
+        return codeGenService.planAndGenCode(projectId, user.getId().toString());
     }
 }

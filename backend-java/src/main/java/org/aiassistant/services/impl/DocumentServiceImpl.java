@@ -41,9 +41,9 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Transactional
     @Override
-    public List<DocumentDTO> uploadDocument(String projectId, MultipartFile[] files) {
+    public List<DocumentDTO> uploadDocument(String projectId, MultipartFile[] files, String userId) {
         Project currentProject = projectService.findById(projectId);
-        documentIngestionReaderService.ingestDocs(projectId, files);
+        documentIngestionReaderService.ingestDocs(projectId, files, userId);
         List<Document> toSave = new ArrayList<>();
 
         for(MultipartFile file : files) {
