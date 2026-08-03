@@ -6,6 +6,7 @@ import org.aiassistant.ai.tools.planning.FileTools;
 import org.aiassistant.ai.utils.Helper;
 import org.aiassistant.entities.Project;
 import org.aiassistant.services.ProjectService;
+import org.aiassistant.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -66,7 +67,7 @@ public class PlanningAgent {
      * @param projectId      the project whose context docs the agent may read
      * @return the parsed blueprint, or {@code null} if the model produced no usable output
      */
-    public Blueprint plan(String projectId) {
+    public Blueprint plan(String projectId, String userId) {
 
         Project project = projectService.findById(projectId);
 
@@ -97,6 +98,7 @@ public class PlanningAgent {
             String raw = this.chatClient
                     .prompt(prompt)
                     .system(systemPrompt)
+                    .advisors(a -> a.param(Constants.USER_ID, userId))
                     .tools(new FileTools(docsBasePath, projectId))
                     .call()
                     .content();

@@ -2,14 +2,16 @@ package org.aiassistant.ai.services;
 
 import org.aiassistant.entities.Project;
 import org.aiassistant.services.ProjectService;
+import org.aiassistant.utils.Constants;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chroma.vectorstore.ChromaApi;
 import org.springframework.ai.chroma.vectorstore.ChromaVectorStore;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -20,7 +22,6 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -44,35 +45,15 @@ public class DocumentIngestionReaderService {
 
     private final ChromaApi chromaApi;
 
-    private static final String SYSTEM_PROMPT = """
-        You are a helpful assistant that answers questions based strictly on the
-        provided context.
 
-        Instructions:
-        - Use ONLY the information in the context below to answer the question.
-        - If the context does not contain enough information to answer, say:
-          "I don't have enough information in the provided documents to answer that."
-        - Do not make up facts or rely on outside knowledge.
-        - Be concise and accurate. Quote or reference the context where relevant.
-        - If the question is ambiguous, ask for clarification.
-
-        Context:
-        ---------------------
-        {context}
-        ---------------------
-
-        Question:
-        {userQuestion}
-
-        Answer:
-        """;
 
     public DocumentIngestionReaderService (
             EmbeddingModel embeddingModel,
             @Qualifier("OpenAIChatClient") ChatClient chatClient,
             ChromaApi chromaApi,
             ProjectService projectService,
-            @Value("classpath:prompts/file-summary-generator-system-prompt.st") Resource fileSummaryGenSystemPrompt
+            @Value("classpath:prompts/file-summary-generator-system-prompt.st") Resource fileSummaryGenSystemPrompt,
+            ChatClient.Builder builder
     ) {
         this.chatClient = chatClient;
         this.embeddingModel = embeddingModel;
@@ -84,7 +65,7 @@ public class DocumentIngestionReaderService {
 
     private static final String PROJECT_COLLECTION_PREFIX = "project-";
 
-    public void ingestDocs(String projectId, MultipartFile[] files) {
+    public void ingestDocs(String projectId, MultipartFile[] files, String userId) {
         if (files == null || files.length == 0) {
             return;
         }
@@ -136,7 +117,7 @@ public class DocumentIngestionReaderService {
 
                 store.add(chunks);
 
-                generateFileSummary(file, summary);
+                generateFileSummary(file, summary, userId);
 
             } catch (IOException e) {
                 throw new RuntimeException(
@@ -155,30 +136,31 @@ public class DocumentIngestionReaderService {
         }
     }
 
-    public String query(String projectId, String userQuery) {
-        VectorStore store = forProject(projectId);
-        PromptTemplate template = new PromptTemplate(SYSTEM_PROMPT);
-        Prompt prompt = template.create(Map.of(
-                "context", retrieveContext(store, userQuery),
-                "userQuestion", userQuery
-        ));
 
-        return chatClient.prompt(prompt).call().content();
+    public String query(String projectId, String userQuery, String userId) {
+        VectorStore vectorStore = forProject(projectId);
+
+
+        Advisor retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .similarityThreshold(0.50)
+                        .topK(8)
+                        .vectorStore(vectorStore)
+                        .build())
+
+                .build();
+
+        return chatClient.prompt()
+                .advisors(retrievalAugmentationAdvisor)
+                .advisors(a -> {
+                    a.param(Constants.USER_ID, userId);
+                })
+                .user(userQuery)
+                .call()
+                .content();
     }
 
-    public Flux<String> queryStream(String projectId, String userQuery) {
-        VectorStore store = forProject(projectId);
-        PromptTemplate template = new PromptTemplate(SYSTEM_PROMPT);
-        Prompt prompt = template.create(Map.of(
-                "context", retrieveContext(store, userQuery),
-                "userQuestion", userQuery
-        ));
-
-        return chatClient.prompt(prompt).stream().content();
-    }
-
-
-    public void generateFileSummary(MultipartFile file, Map<String, String> summary) {
+    public void generateFileSummary(MultipartFile file, Map<String, String> summary, String userId) {
         String fileName = file.getOriginalFilename();
 
         String content;
@@ -191,6 +173,9 @@ public class DocumentIngestionReaderService {
         String fileSummary = this.chatClient
                 .prompt()
                 .system(fileSummaryGenSystemPrompt)
+                .advisors(a -> {
+                    a.param(Constants.USER_ID, userId);
+                })
                 .user(u -> u.text("File name: {name}\n\nContent:\n{content}")
                         .param("name", fileName)
                         .param("content", content))

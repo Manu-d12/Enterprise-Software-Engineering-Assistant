@@ -19,6 +19,7 @@ public final class SseUtil {
     public static final String EVENT_COMPLETE = "complete";
     public static final String EVENT_ERROR = "error";
     public static final String EVENT_ZIP = "zip";
+    public static final String EVENT_S3 = "s3";
 
     /*
      * Monotonic, strictly-increasing event id sequence.

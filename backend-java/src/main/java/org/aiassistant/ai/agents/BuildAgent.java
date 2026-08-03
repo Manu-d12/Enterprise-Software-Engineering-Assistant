@@ -4,6 +4,7 @@ import org.aiassistant.ai.dtos.codegen.Blueprint;
 import org.aiassistant.ai.dtos.codegen.PlannedFile;
 import org.aiassistant.ai.tools.ContractTool;
 import org.aiassistant.ai.tools.FileTools;
+import org.aiassistant.utils.Constants;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -49,12 +50,12 @@ public class BuildAgent {
      * @param interfaceIndexMap signatures of already-generated files, keyed by relative path
      * @return the generated file, or {@code null} if the model produced no usable output
      */
-    public GeneratedFile build(Blueprint blueprint, PlannedFile file, Map<String, String> interfaceIndexMap, ReviewAgent.ReviewResult reviewResult) {
+    public GeneratedFile build(Blueprint blueprint, PlannedFile file, Map<String, String> interfaceIndexMap, ReviewAgent.ReviewResult reviewResult, String userId) {
         String context = generateFileContext(file, interfaceIndexMap, reviewResult);
-        return generateFile(blueprint, context);
+        return generateFile(blueprint, context, userId);
     }
 
-    private GeneratedFile generateFile(Blueprint blueprint, String context) {
+    private GeneratedFile generateFile(Blueprint blueprint, String context, String userId) {
         return retryTemplate.execute((ctx) -> {
             PromptTemplate promptTemplate = new PromptTemplate("""
             Generate the file described below.
@@ -80,6 +81,7 @@ public class BuildAgent {
             String raw = this.chatClient
                     .prompt(prompt)
                     .tools(fileTools, new ContractTool(blueprint))
+                    .advisors(a -> a.param(Constants.USER_ID, userId))
                     .call()
                     .content();
 

@@ -3,10 +3,12 @@ package org.aiassistant.ai.agents;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.aiassistant.ai.utils.Helper;
+import org.aiassistant.utils.Constants;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,8 @@ public class ReviewAgent {
     public ReviewResult reviewFile(
             String content,
             String fileFullPath,
-            Map<String, String> interfaceIndex
+            Map<String, String> interfaceIndex,
+            String userId
     ) {
 
         BeanOutputConverter<ReviewResult> converter = Helper.buildConverter(ReviewResult.class);
@@ -65,6 +68,8 @@ public class ReviewAgent {
         String raw = this.chatClient
                 .prompt(prompt)
                 .system(systemPrompt)
+                .advisors(a -> a.param(Constants.USER_ID, userId))
+                .options(OpenAiChatOptions.builder().maxTokens(1000).build())
                 .call()
                 .content();
 

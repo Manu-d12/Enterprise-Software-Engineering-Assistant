@@ -44,6 +44,8 @@ public class CodeGenService {
     private final BuildAgent buildAgent;
 
     private final ReviewAgent reviewAgent;
+    
+    private final S3Service s3Service;
 
     public CodeGenService(
             @Qualifier("codeGenExecutor") ThreadPoolTaskExecutor taskExecutor,
@@ -52,7 +54,8 @@ public class CodeGenService {
             @Value("${codegen.zip.workspace}") String codeGenZipFileWorkspace,
             PlanningAgent planningAgent,
             BuildAgent buildAgent,
-            ReviewAgent reviewAgent
+            ReviewAgent reviewAgent,
+            S3Service s3Service
     ) {
         this.taskExecutor = taskExecutor;
         this.blueprintDir = blueprintDir;
@@ -61,12 +64,13 @@ public class CodeGenService {
         this.planningAgent = planningAgent;
         this.buildAgent = buildAgent;
         this.reviewAgent = reviewAgent;
+        this.s3Service = s3Service;
     }
 
     /* No timeout — a full code-generation run can legitimately take several minutes. */
     private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L;
 
-    public SseEmitter planAndGenCode(String projectId) {
+    public SseEmitter planAndGenCode(String projectId, String userId) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         taskExecutor.submit(() -> {
             String codeGenJobId = UUID.randomUUID().toString();
@@ -77,7 +81,7 @@ public class CodeGenService {
                  * Step 1. Requirement Call to LLM
                  * */
                 SseUtil.sendProgress(emitter, "Step 1/5 — Analyzing your requirement and designing the project blueprint...");
-                Blueprint projectBluePrint = planningAgent.plan(projectId);
+                Blueprint projectBluePrint = planningAgent.plan(projectId, userId);
                 if (projectBluePrint == null) {
                     SseUtil.sendEvent(emitter, SseUtil.EVENT_ERROR, "Unable to build a project blueprint from the requirement. Aborting.");
                     emitter.complete();
@@ -103,7 +107,7 @@ public class CodeGenService {
                  * Backend first --> frontend and generate the actual content.
                  * */
                 SseUtil.sendProgress(emitter, "Step 3/5 — Generating project files...");
-                generateProjectFiles(projectBluePrint, codeGenJobId, emitter);
+                generateProjectFiles(projectBluePrint, codeGenJobId, emitter, userId);
 
                 SseUtil.sendEvent(emitter, SseUtil.EVENT_COMPLETE, "Code generation completed successfully. Job ID: " + codeGenJobId);
 
@@ -120,6 +124,12 @@ public class CodeGenService {
                 ZipUtil.createZipFile(sourceDir, destZipDir);
 
                 SseUtil.sendEvent(emitter, SseUtil.EVENT_ZIP, "Zip Conversion Done...");
+                
+                SseUtil.sendEvent(emitter, SseUtil.EVENT_S3, "Uploading file to Storage...");
+
+                s3Service.saveFile(new File(destZipDir), projectId, userId);
+
+                SseUtil.sendEvent(emitter, SseUtil.EVENT_S3, "Uploading Done...");
 
                 emitter.complete();
             } catch (Exception ex) {
@@ -131,7 +141,7 @@ public class CodeGenService {
         return emitter;
     }
 
-    private void generateProjectFiles(Blueprint blueprint, String codeGenJobId, SseEmitter emitter) {
+    private void generateProjectFiles(Blueprint blueprint, String codeGenJobId, SseEmitter emitter, String userId) {
 
         if(blueprint == null) return;
 
@@ -144,8 +154,8 @@ public class CodeGenService {
         Map<String, String> generatedFiles = new LinkedHashMap<>();
 
         /* Backend first so their interfaces are available to the frontend. */
-        generateFiles(blueprint, blueprint.backendFiles(), interfaceIndexMap, generatedFiles, "backend", emitter);
-        generateFiles(blueprint, blueprint.frontendFiles(), interfaceIndexMap, generatedFiles, "frontend", emitter);
+        generateFiles(blueprint, blueprint.backendFiles(), interfaceIndexMap, generatedFiles, "backend", emitter, userId);
+        generateFiles(blueprint, blueprint.frontendFiles(), interfaceIndexMap, generatedFiles, "frontend", emitter, userId);
 
         /* Step 4. All files generated — persist them to the codegen workspace. */
         SseUtil.sendProgress(emitter, "Step 4/5 — Writing " + generatedFiles.size()
@@ -181,7 +191,9 @@ public class CodeGenService {
                                Map<String, String> interfaceIndexMap,
                                Map<String, String> generatedFiles,
                                String basePath,
-                               SseEmitter emitter) {
+                               SseEmitter emitter,
+                               String userId
+    ) {
         if (files == null || files.isEmpty()) return;
 
         int total = files.size();
@@ -202,8 +214,8 @@ public class CodeGenService {
 
             while (attempts < maxAttempts) {
                 /* can return a 'null' too */
-               response = buildAgent.build(blueprint, file, interfaceIndexMap, reviewResult);
-               reviewResult = reviewAgent.reviewFile(response.content(), relativePath, interfaceIndexMap);
+               response = buildAgent.build(blueprint, file, interfaceIndexMap, reviewResult, userId);
+               reviewResult = reviewAgent.reviewFile(response.content(), relativePath, interfaceIndexMap, userId);
 
                if(reviewResult.approved()) {
                    break;

@@ -51,7 +51,7 @@ public class SecurityConfig {
                         // fail, and it would block the real request (surfacing as a CORS error).
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Login endpoint is public — you can't have a token before you log in.
-                        .requestMatchers("/auth/login/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         // Everything else requires a valid JWT.
                         .anyRequest().authenticated()
                 )

@@ -32,7 +32,6 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/register")
     public ResponseEntity<UserRegisterDTO> registerUser(
             @RequestBody UserRegisterDTO userRegisterDTO
