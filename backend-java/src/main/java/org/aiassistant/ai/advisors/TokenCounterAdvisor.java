@@ -21,6 +21,7 @@ public class TokenCounterAdvisor implements BaseAdvisor {
     private final TokenRepo tokenRepo;
     private final UserService userService;
 
+
     @Override
     public ChatClientRequest before(ChatClientRequest chatClientRequest, AdvisorChain advisorChain) {
         return chatClientRequest;

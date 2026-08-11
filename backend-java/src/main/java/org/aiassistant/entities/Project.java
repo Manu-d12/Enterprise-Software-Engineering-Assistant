@@ -35,6 +35,9 @@ public class Project {
 
     private LocalDateTime lastModifiedDate;
 
+    @Column(name = "S3_Path")
+    private String s3Path;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;

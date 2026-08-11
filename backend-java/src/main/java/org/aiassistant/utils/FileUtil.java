@@ -86,4 +86,16 @@ public class FileUtil {
             throw new UncheckedIOException("Failed to read file from path: " + path, e);
         }
     }
+
+    public static void recursiveDelete(File file) {
+        if (!file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                recursiveDelete(f);
+            }
+        }
+        file.delete();
+    }
 }

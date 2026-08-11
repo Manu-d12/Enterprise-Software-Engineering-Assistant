@@ -7,6 +7,7 @@ import org.aiassistant.ai.agents.PlanningAgent;
 import org.aiassistant.ai.agents.ReviewAgent;
 import org.aiassistant.ai.dtos.codegen.Blueprint;
 import org.aiassistant.ai.dtos.codegen.PlannedFile;
+import org.aiassistant.services.ProjectService;
 import org.aiassistant.utils.FileUtil;
 import org.aiassistant.utils.SseUtil;
 import org.aiassistant.utils.ZipUtil;
@@ -46,6 +47,7 @@ public class CodeGenService {
     private final ReviewAgent reviewAgent;
     
     private final S3Service s3Service;
+    private final ProjectService projectService;
 
     public CodeGenService(
             @Qualifier("codeGenExecutor") ThreadPoolTaskExecutor taskExecutor,
@@ -55,8 +57,8 @@ public class CodeGenService {
             PlanningAgent planningAgent,
             BuildAgent buildAgent,
             ReviewAgent reviewAgent,
-            S3Service s3Service
-    ) {
+            S3Service s3Service,
+            ProjectService projectService) {
         this.taskExecutor = taskExecutor;
         this.blueprintDir = blueprintDir;
         this.codegenWorkspaceDir = codegenWorkspaceDir;
@@ -65,6 +67,7 @@ public class CodeGenService {
         this.buildAgent = buildAgent;
         this.reviewAgent = reviewAgent;
         this.s3Service = s3Service;
+        this.projectService = projectService;
     }
 
     /* No timeout — a full code-generation run can legitimately take several minutes. */
@@ -130,12 +133,29 @@ public class CodeGenService {
                 s3Service.saveFile(new File(destZipDir), projectId, userId);
 
                 SseUtil.sendEvent(emitter, SseUtil.EVENT_S3, "Uploading Done...");
-
                 emitter.complete();
             } catch (Exception ex) {
                 log.error("Code generation failed for job {}", codeGenJobId, ex);
                 SseUtil.sendEvent(emitter, SseUtil.EVENT_ERROR, "Code generation failed: " + ex.getMessage());
                 emitter.completeWithError(ex);
+            } finally {
+
+                String sourceDir = System.getProperty("user.dir")
+                        + File.separator + codegenWorkspaceDir
+                        + File.separator + codeGenJobId;
+
+                String destZipDir = System.getProperty("user.dir")
+                        + File.separator + codeGenZipFileWorkspace
+                        + File.separator + codeGenJobId + ".zip";
+
+
+                SseUtil.sendEvent(emitter, SseUtil.EVENT_DELETE, "Deleting the files from instance level...");
+
+                FileUtil.recursiveDelete(new File(sourceDir));
+                FileUtil.recursiveDelete(new File(destZipDir));
+                FileUtil.recursiveDelete(new File(getBluePrintFilePath(codeGenJobId)));
+
+                SseUtil.sendEvent(emitter, SseUtil.EVENT_DELETE, "Deleted Successfully");
             }
         });
         return emitter;

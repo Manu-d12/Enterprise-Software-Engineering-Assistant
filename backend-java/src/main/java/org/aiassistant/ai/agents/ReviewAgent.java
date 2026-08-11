@@ -69,7 +69,7 @@ public class ReviewAgent {
                 .prompt(prompt)
                 .system(systemPrompt)
                 .advisors(a -> a.param(Constants.USER_ID, userId))
-                .options(OpenAiChatOptions.builder().maxTokens(1000).build())
+                .options(OpenAiChatOptions.builder().maxTokens(1000).temperature(1.0).build())
                 .call()
                 .content();
 

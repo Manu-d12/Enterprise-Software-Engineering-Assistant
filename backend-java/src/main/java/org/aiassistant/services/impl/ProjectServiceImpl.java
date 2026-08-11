@@ -40,6 +40,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional(readOnly = true)
     @Override
     public List<Project> getAll() {
+
         return projectRepo.findAll();
     }
 
@@ -50,6 +51,13 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public void save(Project project) {
+        projectRepo.save(project);
+    }
+
+    @Override
+    public void setS3Path(String projectId, String path) {
+        Project project = projectRepo.findById(Long.valueOf(projectId)).get();
+        project.setS3Path(path);
         projectRepo.save(project);
     }
 }

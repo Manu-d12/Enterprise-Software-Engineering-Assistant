@@ -13,4 +13,5 @@ public interface ProjectService {
     List<Project> getAll();
     List<Project> findByUser(User user);
     void save(Project project);
+    void setS3Path(String projectId, String path);
 }
